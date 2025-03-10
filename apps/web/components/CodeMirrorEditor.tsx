@@ -464,13 +464,13 @@ export default function CodeMirrorEditor({
           expected_output: null,
         }
         
-        const response = await axios.post("http://3.109.58.54:2358/submissions", judge0Body);
+        const response = await axios.post(`${process.env.NEXT_PUBLIC_JUDGE0_URL}/submissions`, judge0Body);
         console.log(response.data);
         const submissionId = response.data.token;
         
         const interval = setInterval(async () => {
           try {
-            const checkResponse = await axios.get(`http://3.109.58.54:2358/submissions/${submissionId}`);
+            const checkResponse = await axios.get(`${process.env.NEXT_PUBLIC_JUDGE0_URL}/submissions/${submissionId}`);
             console.log(checkResponse.data);
             
             if (checkResponse.data.status.id >= 3) { // Result is available
