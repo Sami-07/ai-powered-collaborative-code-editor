@@ -1,0 +1,112 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: judge0-api
+  namespace: code-collab
+  labels:
+    app: judge0-api
+spec:
+  ports:
+  - port: 2358
+    targetPort: 2358
+    name: http
+  selector:
+    app: judge0-api
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: judge0-api
+  namespace: code-collab
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: judge0-api
+  template:
+    metadata:
+      labels:
+        app: judge0-api
+    spec:
+      containers:
+      - name: judge0-api
+        image: judge0/judge0:1.13.0
+        ports:
+        - containerPort: 2358
+        env:
+        - name: REDIS_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: judge0-config
+              key: REDIS_HOST
+        - name: REDIS_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: judge0-config
+              key: REDIS_PORT
+        - name: POSTGRES_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: judge0-config
+              key: POSTGRES_HOST
+        - name: POSTGRES_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: judge0-config
+              key: POSTGRES_PORT
+        - name: POSTGRES_DB
+          valueFrom:
+            configMapKeyRef:
+              name: judge0-config
+              key: POSTGRES_DB
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: judge0-secrets
+              key: POSTGRES_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: judge0-secrets
+              key: POSTGRES_PASSWORD
+        - name: SECRET_KEY_BASE
+          valueFrom:
+            secretKeyRef:
+              name: judge0-secrets
+              key: SECRET_KEY_BASE
+        - name: AUTHN_HEADER
+          valueFrom:
+            configMapKeyRef:
+              name: judge0-config
+              key: AUTHN_HEADER
+        - name: ENABLE_WAIT_RESULT
+          valueFrom:
+            configMapKeyRef:
+              name: judge0-config
+              key: ENABLE_WAIT_RESULT
+        - name: MAX_QUEUE_SIZE
+          valueFrom:
+            configMapKeyRef:
+              name: judge0-config
+              key: MAX_QUEUE_SIZE
+        - name: CPU_TIME_LIMIT
+          valueFrom:
+            configMapKeyRef:
+              name: judge0-config
+              key: CPU_TIME_LIMIT
+        - name: MAX_CPU_TIME_LIMIT
+          valueFrom:
+            configMapKeyRef:
+              name: judge0-config
+              key: MAX_CPU_TIME_LIMIT
+        - name: ENABLE_CALLBACKS
+          valueFrom:
+            configMapKeyRef:
+              name: judge0-config
+              key: ENABLE_CALLBACKS
+        readinessProbe:
+          httpGet:
+            path: /health-check
+            port: 2358
+          initialDelaySeconds: 30
+          periodSeconds: 15 

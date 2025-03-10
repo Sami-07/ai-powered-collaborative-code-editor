@@ -1,0 +1,84 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: judge0-workers
+  namespace: code-collab
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: judge0-worker
+  template:
+    metadata:
+      labels:
+        app: judge0-worker
+    spec:
+      containers:
+      - name: judge0-worker
+        image: judge0/judge0:1.13.0
+        command: ["/judge0-worker.sh"]
+        env:
+        - name: REDIS_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: REDIS_HOST
+        - name: REDIS_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: REDIS_PORT
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: REDIS_PASSWORD
+        - name: POSTGRES_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: judge0-config
+              key: POSTGRES_HOST
+        - name: POSTGRES_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: judge0-config
+              key: POSTGRES_PORT
+        - name: POSTGRES_DB
+          valueFrom:
+            configMapKeyRef:
+              name: judge0-config
+              key: POSTGRES_DB
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: judge0-secrets
+              key: POSTGRES_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: judge0-secrets
+              key: POSTGRES_PASSWORD
+        - name: SECRET_KEY_BASE
+          valueFrom:
+            secretKeyRef:
+              name: judge0-secrets
+              key: SECRET_KEY_BASE
+        - name: CPU_TIME_LIMIT
+          valueFrom:
+            configMapKeyRef:
+              name: judge0-config
+              key: CPU_TIME_LIMIT
+        - name: MAX_CPU_TIME_LIMIT
+          valueFrom:
+            configMapKeyRef:
+              name: judge0-config
+              key: MAX_CPU_TIME_LIMIT
+        securityContext:
+          privileged: true
+        resources:
+          limits:
+            cpu: "1"
+            memory: "1Gi"
+          requests:
+            cpu: "500m"
+            memory: "512Mi" 

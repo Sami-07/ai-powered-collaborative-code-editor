@@ -1,0 +1,32 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: judge0-workers-scaler
+  namespace: code-collab
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: judge0-workers
+  minReplicaCount: 3
+  maxReplicaCount: 10
+  pollingInterval: 15  # check every 15 seconds
+  cooldownPeriod: 30   # wait 30 seconds before scaling down
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 0
+          policies:
+          - type: Percent
+            value: 100
+            periodSeconds: 15
+  triggers:
+  - type: redis
+    metadata:
+      hostFromEnv: REDIS_HOST
+      portFromEnv: REDIS_PORT
+      passwordFromEnv: REDIS_PASSWORD
+      listName: "custom:submissions:queue"
+      listLength: "10"  # Scale up when queue length > 10
+      enableTLS: "false" 

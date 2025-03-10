@@ -1,13 +1,15 @@
 {
-  "name": "db",
+  "name": "@repo/db",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "index.ts",
+  "types": "index.ts",
   "scripts": {
-    "db:migrate": "npx prisma migrate dev",
-    "db:generate": "npx prisma generate",
-    "db:studio": "npx prisma studio"
+    "db:migrate": "npx prisma migrate dev --schema=./prisma/schema.prisma",
+    "db:generate": "npx prisma generate --schema=./prisma/schema.prisma",
+    "db:studio": "npx prisma studio --schema=./prisma/schema.prisma"
   },
   "exports": {
+    ".": "./index.ts",
     "./client": "./index.ts"
   },
   "keywords": [],
