@@ -1,9 +1,16 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { FiSend, FiMessageSquare, FiAlertCircle, FiChevronDown, FiSmile, FiMoreHorizontal } from "react-icons/fi";
+import { FiSend, FiMessageSquare, FiAlertCircle, FiChevronDown, FiSmile, FiMoreHorizontal, FiCode, FiLink, FiBold, FiItalic } from "react-icons/fi";
 import useChat, { ChatMessage } from "../hooks/useChat";
 import { useUser } from "@clerk/nextjs";
+import ReactMarkdown from 'react-markdown';
+import rehypeHighlight from 'rehype-highlight';
+import rehypeRaw from 'rehype-raw';
+import remarkGfm from 'remark-gfm';
+import 'highlight.js/styles/atom-one-dark.css';
+import { Components } from 'react-markdown';
+import { Textarea } from "./ui/textarea";
 
 // Enhanced chat panel with improved UI
 interface ChatPanelProps {
@@ -15,6 +22,15 @@ interface ChatPanelProps {
   remoteUsers: Array<{ id: string; name: string; color: string }>;
   roomId: string;
   codeContent?: string; // Add codeContent prop
+}
+
+// Define the type for the code component props
+interface CodeProps {
+  node?: any;
+  inline?: boolean;
+  className?: string;
+  children: React.ReactNode;
+  [key: string]: any;
 }
 
 export default function ChatPanel({
@@ -85,12 +101,29 @@ export default function ChatPanel({
   const handleSendMessage = async () => {
     if (message.trim() === "" || !user) return;
     
+    // Process message before sending
+    let processedMessage = message;
+    
+    // Check if the message might be an object or array
+    if ((processedMessage.trim().startsWith('{') && processedMessage.trim().endsWith('}')) ||
+        (processedMessage.trim().startsWith('[') && processedMessage.trim().endsWith(']'))) {
+      try {
+        // Try to parse it as JSON to see if it's valid
+        const jsonObj = JSON.parse(processedMessage);
+        // If it parses correctly, format it as a code block
+        processedMessage = '```json\n' + JSON.stringify(jsonObj, null, 2) + '\n```';
+      } catch (e) {
+        // Not valid JSON, proceed as normal text
+        console.log("Not valid JSON:", e);
+      }
+    }
+    
     // Check if message contains @jarvis mention
-    if (message.includes("@jarvis")) {
+    if (processedMessage.includes("@jarvis")) {
       setIsJarvisResponding(true);
       
       // Send the user message via WebSocket first
-      if (sendMessage(message)) {
+      if (sendMessage(processedMessage)) {
         // Clear the input after sending
         setMessage("");
         
@@ -102,7 +135,7 @@ export default function ChatPanel({
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              message,
+              message: processedMessage,
               code: codeContent,
               language,
               roomId,
@@ -124,7 +157,7 @@ export default function ChatPanel({
       }
     } else {
       // Normal message, just send it via WebSocket
-      if (sendMessage(message)) {
+      if (sendMessage(processedMessage)) {
         // Clear the input only if message was sent successfully
         setMessage("");
       }
@@ -187,12 +220,59 @@ export default function ChatPanel({
     return prevDate.toDateString() !== currentDate.toDateString();
   };
   
+  // Custom components for ReactMarkdown
+  const markdownComponents = {
+    code: (props: any) => {
+      const { inline, className, children } = props;
+      const match = /language-(\w+)/.exec(className || '');
+      
+      return !inline ? (
+        <div className="code-block w-full overflow-hidden rounded-lg shadow-md my-2">
+          <div className="code-header px-3 py-1.5 bg-gray-800 text-gray-300 text-xs rounded-t">
+            <span className="font-medium">{match && match[1] ? match[1] : 'code'}</span>
+          </div>
+          <div className="w-full overflow-auto max-h-[500px]">
+            <pre className="!mt-0 !rounded-t-none w-full">
+              <code className={className} {...props}>
+                {children}
+              </code>
+            </pre>
+          </div>
+        </div>
+      ) : (
+        <code className="bg-gray-800/20 dark:bg-gray-900/50 px-1.5 py-0.5 rounded font-mono text-sm break-all" {...props}>
+          {children}
+        </code>
+      );
+    },
+    a: (props: any) => (
+      <a target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline" {...props} />
+    ),
+  };
+  
   // Render different message types
   const renderMessage = (message: ChatMessage, index: number) => {
     const isCurrentUser = user && message.senderId === user.id;
     const isJarvis = message.senderId === 'jarvis';
     const showSenderInfo = shouldShowSenderInfo(index, message);
     const showDateSeparator = shouldShowDateSeparator(index, message);
+    
+    // Process message content to handle objects properly
+    let processedContent = message.content;
+    if (processedContent && typeof processedContent === 'object') {
+      try {
+        processedContent = JSON.stringify(processedContent, null, 2);
+        // Wrap in code block if it's JSON
+        if (!processedContent.includes('```')) {
+          processedContent = '```json\n' + processedContent + '\n```';
+        }
+      } catch (e) {
+        console.warn("Error stringifying message content:", e);
+        processedContent = String(processedContent);
+      }
+    }
+    
+    const hasCodeBlock = processedContent && processedContent.includes('```');
     
     return (
       <div key={`msg-${message.timestamp}-${index}`}>
@@ -233,19 +313,27 @@ export default function ChatPanel({
             
             <div className="flex items-end max-w-[85%] group">
               <div 
-                className={`px-3 py-2 rounded-2xl ${
+                className={`${
+                  hasCodeBlock ? 'p-2' : 'px-3 py-2'
+                } rounded-2xl ${
                   isCurrentUser 
-                    ? 'bg-blue-600 text-white rounded-br-none' 
+                    ? `${hasCodeBlock ? 'bg-blue-700' : 'bg-blue-600'} text-white rounded-br-none` 
                     : isJarvis
-                      ? 'bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded-bl-none'
-                      : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-bl-none'
-                }`}
+                      ? `${hasCodeBlock ? 'bg-purple-200 dark:bg-purple-900/80' : 'bg-purple-100 dark:bg-purple-900'} text-purple-800 dark:text-purple-200 rounded-bl-none`
+                      : `${hasCodeBlock ? 'bg-gray-300 dark:bg-gray-800' : 'bg-gray-200 dark:bg-gray-700'} text-gray-800 dark:text-gray-200 rounded-bl-none`
+                } max-w-full overflow-hidden`}
               >
-                <div className="whitespace-pre-wrap break-words">
-                  {message.content}
+                <div className="markdown-content w-full overflow-hidden">
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    rehypePlugins={[rehypeRaw, [rehypeHighlight, { detect: true, ignoreMissing: true }]]}
+                    components={markdownComponents}
+                  >
+                    {processedContent || ''}
+                  </ReactMarkdown>
                 </div>
               </div>
-              <div className={`text-xs text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity mx-2`}>
+              <div className={`text-xs text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity mx-2 flex-shrink-0`}>
                 {formatTime(message.timestamp)}
               </div>
             </div>
@@ -258,12 +346,20 @@ export default function ChatPanel({
               </div>
             </div>
             <div className="flex items-end max-w-[85%]">
-              <div className="px-3 py-2 rounded-2xl bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded-br-none">
-                <div className="whitespace-pre-wrap break-words">
-                  {message.content}
+              <div className={`${
+                processedContent && processedContent.includes('```') ? 'p-2' : 'px-3 py-2'
+              } rounded-2xl bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded-br-none max-w-full overflow-hidden`}>
+                <div className="markdown-content w-full overflow-hidden">
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    rehypePlugins={[rehypeRaw, [rehypeHighlight, { detect: true, ignoreMissing: true }]]}
+                    components={markdownComponents}
+                  >
+                    {processedContent || ''}
+                  </ReactMarkdown>
                 </div>
               </div>
-              <div className="text-xs text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity mx-2">
+              <div className="text-xs text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity mx-2 flex-shrink-0">
                 {formatTime(message.timestamp)}
               </div>
             </div>
@@ -284,6 +380,105 @@ export default function ChatPanel({
     return `hsl(${hue}, 70%, 50%)`;
   };
   
+  // Add markdown toolbar
+  const insertMarkdown = (type: string) => {
+    let insertion = '';
+    
+    switch (type) {
+      case 'bold':
+        insertion = '**bold text**';
+        break;
+      case 'italic':
+        insertion = '*italic text*';
+        break;
+      case 'code':
+        insertion = '`code`';
+        break;
+      case 'codeblock':
+        insertion = '```\ncode block\n```';
+        break;
+      case 'link':
+        insertion = '[link text](https://example.com)';
+        break;
+    }
+    
+    setMessage(prev => {
+      if (!prev) return insertion;
+      
+      // If there's a selection in the input, surround it with markdown syntax
+      const input = document.querySelector('input[type="text"]') as HTMLInputElement;
+      if (input && input.selectionStart !== null && input.selectionEnd !== null && 
+          input.selectionStart !== input.selectionEnd) {
+        const start = input.selectionStart;
+        const end = input.selectionEnd;
+        const selectedText = prev.substring(start, end);
+        
+        let prefix = '';
+        let suffix = '';
+        
+        switch (type) {
+          case 'bold':
+            prefix = '**';
+            suffix = '**';
+            break;
+          case 'italic':
+            prefix = '*';
+            suffix = '*';
+            break;
+          case 'code':
+            prefix = '`';
+            suffix = '`';
+            break;
+          case 'codeblock':
+            prefix = '```\n';
+            suffix = '\n```';
+            break;
+          case 'link':
+            prefix = '[';
+            suffix = '](https://example.com)';
+            break;
+        }
+        
+        return prev.substring(0, start) + prefix + selectedText + suffix + prev.substring(end);
+      }
+      
+      return prev + insertion;
+    });
+  };
+
+  // Add a paste handler for automatically formatting pasted JSON
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const clipboardData = e.clipboardData || (window as any).clipboardData;
+    const pastedData = clipboardData.getData('text');
+    
+    // Check if the pasted content looks like an object or array
+    if ((pastedData.trim().startsWith('{') && pastedData.trim().endsWith('}')) ||
+        (pastedData.trim().startsWith('[') && pastedData.trim().endsWith(']'))) {
+      try {
+        // Try to parse it as JSON to see if it's valid
+        const jsonObj = JSON.parse(pastedData);
+        // If it parses correctly, format it as a code block
+        const formattedBlock = '```json\n' + JSON.stringify(jsonObj, null, 2) + '\n```';
+        
+        // Insert the formatted block in the message input
+        e.preventDefault(); // Prevent default paste
+        
+        setMessage(prev => {
+          const textArea = e.currentTarget as HTMLTextAreaElement;
+          if (textArea && textArea.selectionStart !== null && textArea.selectionEnd !== null) {
+            const start = textArea.selectionStart;
+            const end = textArea.selectionEnd;
+            return prev.substring(0, start) + formattedBlock + prev.substring(end);
+          }
+          return prev + formattedBlock;
+        });
+      } catch (e) {
+        // Not valid JSON, proceed with normal paste
+        console.log("Not valid JSON:", e);
+      }
+    }
+  };
+
   return (
     <div className="w-full h-full bg-white dark:bg-gray-800 overflow-hidden flex flex-col">
       {/* Header */}
@@ -341,7 +536,7 @@ export default function ChatPanel({
       
       {/* Messages */}
       <div 
-        className="flex-1 overflow-y-auto p-4 space-y-1 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent" 
+        className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-1 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent" 
         id="chat-messages"
         ref={chatContainerRef}
       >
@@ -426,49 +621,281 @@ export default function ChatPanel({
         </div>
       )}
       
-      {/* Input area */}
-      <div className="border-t border-gray-200 dark:border-gray-700 p-3">
-        <div className="flex items-center">
-          <input
-            type="text"
-            className="flex-1 px-2 rounded-l-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 text-sm focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 dark:focus:border-blue-400 py-2"
-            placeholder={status === 'connected' ? "Type @jarvis to ask AI for help..." : "Connecting..."}
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
-            disabled={status !== 'connected' || isJarvisResponding}
-          />
-          <button
-            className={`${
-              status === 'connected' && message.trim() !== '' && !isJarvisResponding
-                ? 'bg-blue-600 hover:bg-blue-700 text-white' 
-                : 'bg-gray-400 text-white cursor-not-allowed'
-            } rounded-r-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400`}
-            onClick={handleSendMessage}
-            disabled={status !== 'connected' || message.trim() === '' || isJarvisResponding}
-          >
-            {isJarvisResponding ? (
-              <div className="flex space-x-1 items-center px-1">
-                <div className="animate-pulse bg-white h-1 w-1 rounded-full"></div>
-                <div className="animate-pulse delay-75 bg-white h-1 w-1 rounded-full"></div>
-                <div className="animate-pulse delay-150 bg-white h-1 w-1 rounded-full"></div>
+      {/* Add markdown toolbar and update input area */}
+      <div className="border-t border-gray-200 dark:border-gray-700">
+        <div className="flex items-center px-3 pt-2">
+          <div className="flex space-x-1 text-gray-500 dark:text-gray-400">
+            <button 
+              onClick={() => insertMarkdown('bold')}
+              className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700" 
+              title="Bold"
+            >
+              <FiBold size={16} />
+            </button>
+            <button 
+              onClick={() => insertMarkdown('italic')}
+              className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700" 
+              title="Italic"
+            >
+              <FiItalic size={16} />
+            </button>
+            <button 
+              onClick={() => insertMarkdown('code')}
+              className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700" 
+              title="Inline Code"
+            >
+              <FiCode size={16} />
+            </button>
+            <button 
+              onClick={() => insertMarkdown('codeblock')}
+              className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700" 
+              title="Code Block"
+            >
+              <div className="flex items-center">
+                <FiCode size={16} />
+                <span className="text-xs ml-0.5">{ }</span>
               </div>
-            ) : (
-              <FiSend className="h-5 w-5" />
-            )}
-          </button>
+            </button>
+            <button 
+              onClick={() => insertMarkdown('link')}
+              className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700" 
+              title="Link"
+            >
+              <FiLink size={16} />
+            </button>
+          </div>
         </div>
-        {status !== 'connected' && (
-          <p className="text-xs text-gray-500 mt-1 ml-1">
-            {status === 'connecting' ? 'Connecting to chat...' : 'Chat disconnected'}
-          </p>
-        )}
-        {isJarvisResponding && (
-          <p className="text-xs text-purple-500 mt-1 ml-1">
-            Jarvis is thinking...
-          </p>
-        )}
+        
+        <div className="p-3">
+          <div className="flex items-center relative group bg-gray-50 dark:bg-gray-850 rounded-lg ring-1 ring-gray-200 dark:ring-gray-700 shadow-sm transition-all duration-200 hover:ring-blue-300 dark:hover:ring-blue-700 focus-within:ring-blue-500 dark:focus-within:ring-blue-400 focus-within:ring-2">
+            <Textarea
+              className="flex-1 px-3 py-2.5 rounded-lg border-0 bg-transparent text-gray-900 dark:text-gray-100 text-sm placeholder-gray-500 dark:placeholder-gray-400 focus:ring-0 focus:outline-none resize-none min-h-[60px]"
+              placeholder={status === 'connected' 
+                ? "Type a message or @jarvis to ask AI for help..." 
+                : "Connecting..."}
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              onPaste={handlePaste}
+              onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
+              disabled={status !== 'connected' || isJarvisResponding}
+            />
+            <button
+              className={`absolute right-2 bottom-2 rounded-full p-2 focus:outline-none transition-all duration-200 transform ${
+                status === 'connected' && message.trim() !== '' && !isJarvisResponding
+                  ? 'bg-blue-600 hover:bg-blue-700 active:scale-95 text-white shadow-md hover:shadow-lg' 
+                  : 'bg-gray-300 dark:bg-gray-600 text-white cursor-not-allowed'
+              }`}
+              onClick={handleSendMessage}
+              disabled={status !== 'connected' || message.trim() === '' || isJarvisResponding}
+            >
+              {isJarvisResponding ? (
+                <div className="flex space-x-1 items-center px-1">
+                  <div className="animate-pulse bg-white h-1 w-1 rounded-full"></div>
+                  <div className="animate-pulse delay-75 bg-white h-1 w-1 rounded-full"></div>
+                  <div className="animate-pulse delay-150 bg-white h-1 w-1 rounded-full"></div>
+                </div>
+              ) : (
+                <FiSend className="h-5 w-5 transition-transform group-hover:rotate-12" />
+              )}
+            </button>
+          </div>
+          {status !== 'connected' && (
+            <p className="text-xs text-gray-500 mt-2 ml-1">
+              {status === 'connecting' ? 'Connecting to chat...' : 'Chat disconnected'}
+            </p>
+          )}
+          {isJarvisResponding && (
+            <p className="text-xs text-purple-500 mt-2 ml-1 flex items-center">
+              <span className="w-2 h-2 bg-purple-500 rounded-full mr-2 animate-pulse"></span>
+              Jarvis is thinking...
+            </p>
+          )}
+        </div>
       </div>
+      
+      <style jsx global>{`
+        /* Ensure the chat container doesn't allow horizontal scrolling */
+        #chat-messages {
+          overflow-x: hidden !important;
+          width: 100%;
+        }
+        
+        /* Make all code blocks in the chat properly handle overflow */
+        #chat-messages pre {
+          white-space: pre;
+          overflow-x: auto;
+          max-width: 100%;
+          font-size: 0.9rem;
+          line-height: 1.5;
+        }
+        
+        /* Update existing styles */
+        .markdown-content {
+          overflow-wrap: break-word;
+          word-break: break-word;
+          width: 100%;
+          max-width: 100%;
+          font-size: 0.95rem;
+          line-height: 1.6;
+        }
+        
+        .markdown-content p {
+          margin-bottom: 0.75rem;
+          white-space: normal;
+        }
+        
+        .markdown-content p:last-child {
+          margin-bottom: 0;
+        }
+        
+        .markdown-content pre {
+          margin-top: 0.5rem;
+          margin-bottom: 0.5rem;
+          background-color: #1e1e1e;
+          border-radius: 0.375rem;
+          padding: 0.75rem 1rem;
+          overflow-x: auto;
+          max-width: 100%;
+          width: 100%;
+        }
+        
+        .markdown-content code {
+          font-family: 'JetBrains Mono', 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
+          font-size: 0.875rem;
+          white-space: pre-wrap;
+          word-break: break-all;
+        }
+        
+        .code-block {
+          margin: 0.75rem 0;
+          overflow: hidden;
+          border-radius: 0.375rem;
+          max-width: 100%;
+          width: 100%;
+        }
+        
+        .code-block pre {
+          margin: 0 !important;
+          border-top-left-radius: 0 !important;
+          border-top-right-radius: 0 !important;
+          width: 100%;
+          max-width: 100%;
+          padding: 1rem;
+        }
+        
+        .code-block code {
+          display: inline-block;
+          min-width: 100%;
+          box-sizing: border-box;
+        }
+        
+        .markdown-content ul {
+          list-style-type: disc;
+          padding-left: 1.5rem;
+          margin-bottom: 0.75rem;
+        }
+        
+        .markdown-content ol {
+          list-style-type: decimal;
+          padding-left: 1.5rem;
+          margin-bottom: 0.75rem;
+        }
+        
+        .markdown-content blockquote {
+          border-left: 4px solid #e5e7eb;
+          padding-left: 1rem;
+          color: #6b7280;
+          margin: 0.75rem 0;
+          background-color: rgba(229, 231, 235, 0.2);
+          padding: 0.5rem 1rem;
+          border-radius: 0.25rem;
+        }
+        
+        .markdown-content h1,
+        .markdown-content h2,
+        .markdown-content h3,
+        .markdown-content h4,
+        .markdown-content h5,
+        .markdown-content h6 {
+          font-weight: 600;
+          margin-top: 1.25rem;
+          margin-bottom: 0.75rem;
+          line-height: 1.3;
+        }
+        
+        .markdown-content h1 {
+          font-size: 1.5rem;
+        }
+        
+        .markdown-content h2 {
+          font-size: 1.25rem;
+        }
+        
+        .markdown-content h3 {
+          font-size: 1.125rem;
+        }
+        
+        .markdown-content table {
+          border-collapse: collapse;
+          margin: 0.75rem 0;
+          overflow-x: auto;
+          display: block;
+          max-width: 100%;
+          width: fit-content;
+        }
+        
+        .markdown-content table th,
+        .markdown-content table td {
+          border: 1px solid #e5e7eb;
+          padding: 0.5rem 0.75rem;
+          white-space: normal;
+          word-break: break-word;
+        }
+        
+        .markdown-content table th {
+          background-color: #f3f4f6;
+          font-weight: 600;
+        }
+        
+        .dark .markdown-content blockquote {
+          border-left-color: #4b5563;
+          color: #9ca3af;
+          background-color: rgba(75, 85, 99, 0.2);
+        }
+        
+        .dark .markdown-content table th,
+        .dark .markdown-content table td {
+          border-color: #4b5563;
+        }
+        
+        .dark .markdown-content table th {
+          background-color: #374151;
+        }
+        
+        .code-header {
+          border-bottom: 1px solid #4b5563;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          width: 100%;
+        }
+        
+        /* Fix for inline code blocks that might be too long */
+        .markdown-content :not(pre) > code {
+          word-break: break-word;
+          white-space: normal;
+          padding: 0.1rem 0.3rem;
+        }
+        
+        /* Ensure images don't overflow */
+        .markdown-content img {
+          max-width: 100%;
+          height: auto;
+          display: block;
+          margin: 1rem auto;
+          border-radius: 0.375rem;
+        }
+      `}</style>
     </div>
   );
 } 

@@ -46,6 +46,13 @@ RULES:
 - If appropriate, add error handling, comments, or documentation
 - The code should be production-ready and follow best practices for ${language || 'JavaScript'}
 - Return ONLY the raw code - no explanations, markdown, or backticks
+- If the code is in JavaScript, take the input similar to the below example:
+const input = require("fs").readFileSync("/dev/stdin").toString().trim();
+const [rawArr, rawTarget] = input.split("\n");
+const arr = rawArr.split(" ").map(Number); // Convert array elements to numbers
+const target = Number(rawTarget); // Convert target to a number
+
+
 
 Code context:
 \`\`\`${language || 'javascript'}

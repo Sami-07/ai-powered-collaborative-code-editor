@@ -27,6 +27,7 @@ import { HiOutlineStatusOnline, HiOutlineStatusOffline } from "react-icons/hi";
 
 // Import the ChatPanel component
 import ChatPanel from "./ChatPanel";
+import languageMap from "@/lib/judge0";
 
 // Define a simplified user object that can be safely serialized
 interface SerializableUser {
@@ -222,6 +223,7 @@ export default function CodeMirrorEditor({
   const [aiSuggestion, setAISuggestion] = useState<AISuggestion>({ text: '', isLoading: false, error: null });
   const [showSuggestion, setShowSuggestion] = useState(false);
   const [cursorPosition, setCursorPosition] = useState<{ lineNumber: number, column: number } | null>(null);
+  const [showTestCase, setShowTestCase] = useState(false);
   
   const yDocRef = useRef<Y.Doc | null>(null);
   const providerRef = useRef<WebsocketProvider | null>(null);
@@ -459,7 +461,7 @@ export default function CodeMirrorEditor({
         onCodeChangeRef.current?.(code);
         const judge0Body = {
           source_code: code,
-          language_id: 71,
+          language_id: languageMap[language as keyof typeof languageMap],
           stdin: stdin,
           expected_output: null,
         }
@@ -604,8 +606,8 @@ export default function CodeMirrorEditor({
   }, [editorViewRef.current]);
 
   return (
-    <div className="flex flex-row h-[calc(100vh-4rem)] w-full overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
-      <div className="flex flex-col w-[70%] h-full bg-gray-50 dark:bg-gray-900 overflow-hidden border-r border-gray-200 dark:border-gray-700">
+    <div className="flex flex-col lg:flex-row h-[calc(100vh-8rem)] w-full overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg">
+      <div className="flex flex-col w-full lg:w-[60%] h-full lg:h-full bg-gray-50 dark:bg-gray-900 overflow-hidden border-b lg:border-b-0 lg:border-r border-gray-200 dark:border-gray-700">
         <style jsx global>{`
           .remote-cursor {
             position: relative;
@@ -615,6 +617,8 @@ export default function CodeMirrorEditor({
             pointer-events: none;
             user-select: none;
             white-space: nowrap;
+            opacity: 0.9;
+            transform: translateY(-100%) translateX(-10px);
           }
           .cm-editor {
             height: 100%;
@@ -629,11 +633,11 @@ export default function CodeMirrorEditor({
           .cm-content {
             min-height: 100%;
             white-space: pre !important;
-            padding: 0.5rem 0;
+            padding: 0.75rem 0;
           }
           .cm-line {
             white-space: pre !important;
-            padding: 0 0.5rem 0 0;
+            padding: 0 0.75rem 0 0;
           }
           .cm-lineWrapping {
             white-space: pre-wrap !important;
@@ -641,33 +645,39 @@ export default function CodeMirrorEditor({
           .cm-gutters {
             height: 100%;
             border-right: 1px solid #e5e7eb;
-            background-color: rgba(249, 250, 251, 0.8);
+            background-color: rgba(249, 250, 251, 0.9);
           }
           .dark .cm-gutters {
             border-right: 1px solid #374151;
-            background-color: rgba(31, 41, 55, 0.8);
+            background-color: rgba(31, 41, 55, 0.9);
           }
           /* Customize scrollbar */
           .cm-scroller::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
+            width: 6px;
+            height: 6px;
           }
           .cm-scroller::-webkit-scrollbar-track {
             background: transparent;
           }
           .cm-scroller::-webkit-scrollbar-thumb {
-            background-color: rgba(0, 0, 0, 0.2);
-            border-radius: 4px;
+            background-color: rgba(0, 0, 0, 0.15);
+            border-radius: 8px;
           }
           .dark .cm-scroller::-webkit-scrollbar-thumb {
-            background-color: rgba(255, 255, 255, 0.2);
+            background-color: rgba(255, 255, 255, 0.15);
+          }
+          .cm-scroller::-webkit-scrollbar-thumb:hover {
+            background-color: rgba(0, 0, 0, 0.25);
+          }
+          .dark .cm-scroller::-webkit-scrollbar-thumb:hover {
+            background-color: rgba(255, 255, 255, 0.25);
           }
           /* Improve active line highlight */
           .cm-activeLine {
-            background-color: rgba(224, 231, 255, 0.3) !important;
+            background-color: rgba(224, 231, 255, 0.35) !important;
           }
           .dark .cm-activeLine {
-            background-color: rgba(55, 65, 81, 0.5) !important;
+            background-color: rgba(55, 65, 81, 0.6) !important;
           }
           
           /* Terminal styling */
@@ -679,10 +689,11 @@ export default function CodeMirrorEditor({
             resize: none;
             position: relative;
             padding-left: 1.5rem !important;
+            transition: border-color 0.2s, box-shadow 0.2s;
           }
           
           .terminal-input:focus {
-            box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.3) !important;
+            box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.4) !important;
             border-color: #58a6ff !important;
           }
           
@@ -709,8 +720,9 @@ export default function CodeMirrorEditor({
           
           .terminal-wrapper {
             position: relative;
-            border-radius: 0.375rem;
+            border-radius: 0.5rem;
             overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
           }
           
           .terminal-header {
@@ -732,6 +744,11 @@ export default function CodeMirrorEditor({
             height: 0.75rem;
             border-radius: 50%;
             display: inline-block;
+            transition: opacity 0.2s;
+          }
+          
+          .window-control:hover {
+            opacity: 0.8;
           }
           
           .window-control.close {
@@ -783,10 +800,63 @@ export default function CodeMirrorEditor({
             display: flex;
             flex-direction: column;
           }
+          
+          /* Animate transitions */
+          .transition-all {
+            transition-property: all;
+            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+            transition-duration: 150ms;
+          }
+          
+          /* Animation for notifications */
+          @keyframes slideInFromTop {
+            0% {
+              transform: translateY(-100%);
+              opacity: 0;
+            }
+            100% {
+              transform: translateY(0);
+              opacity: 1;
+            }
+          }
+          
+          .notification-animate {
+            animation: slideInFromTop 0.3s ease-out forwards;
+          }
+          
+          /* User avatar styling */
+          .user-avatar {
+            transition: transform 0.2s ease;
+          }
+          
+          .user-avatar:hover {
+            transform: scale(1.1);
+          }
+          
+          /* Button hover effects */
+          .btn-hover-effect {
+            transition: all 0.2s ease;
+          }
+          
+          .btn-hover-effect:hover:not(:disabled) {
+            transform: translateY(-1px);
+          }
+          
+          .btn-hover-effect:active:not(:disabled) {
+            transform: translateY(0px);
+          }
+          
+          /* Focus styles for accessibility */
+          .focus-ring:focus {
+            outline: none;
+            ring: 2px;
+            ring-offset: 2px;
+            ring-color: rgba(59, 130, 246, 0.5);
+          }
         `}</style>
         
         {error && (
-          <div className="absolute top-0 left-0 right-0 z-10 bg-red-50 dark:bg-red-900/30 border-l-4 border-red-500 p-2 m-2 rounded shadow-sm">
+          <div className="absolute top-0 left-0 right-0 z-10 bg-red-50 dark:bg-red-900/30 border-l-4 border-red-500 p-3 m-3 rounded shadow-md notification-animate">
             <div className="flex">
               <div className="flex-shrink-0">
                 <FiAlertCircle className="h-5 w-5 text-red-500" />
@@ -795,7 +865,7 @@ export default function CodeMirrorEditor({
                 <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
               </div>
               <button 
-                className="ml-auto text-red-500 hover:text-red-700"
+                className="ml-auto text-red-500 hover:text-red-700 transition-colors"
                 onClick={() => setError(null)}
               >
                 <FiX className="h-4 w-4" />
@@ -809,22 +879,29 @@ export default function CodeMirrorEditor({
             <div className="flex items-center space-x-2">
               <div className="flex items-center">
                 {isConnected ? (
-                  <HiOutlineStatusOnline className="h-4 w-4 text-green-500" />
+                  <div className="flex items-center space-x-1">
+                    <HiOutlineStatusOnline className="h-4 w-4 text-green-500" />
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Connected
+                    </span>
+                  </div>
                 ) : (
-                  <HiOutlineStatusOffline className="h-4 w-4 text-red-500" />
+                  <div className="flex items-center space-x-1 animate-pulse">
+                    <HiOutlineStatusOffline className="h-4 w-4 text-red-500" />
+                    <span className="text-sm font-medium text-red-600 dark:text-red-400">
+                      Disconnected
+                    </span>
+                  </div>
                 )}
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {isConnected ? "Connected" : "Disconnected"}
-                </span>
               </div>
             </div>
             
             <div className="h-4 border-l border-gray-300 dark:border-gray-600"></div>
             
             <div className="flex items-center space-x-2">
-              <MdOutlineRoom className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+              <MdOutlineRoom className="h-4 w-4 text-indigo-500 dark:text-indigo-400" />
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Room:</span>
-              <span className="text-sm text-gray-500 dark:text-gray-400">{roomId}</span>
+              <span className="text-sm text-gray-500 dark:text-gray-400 font-mono">{roomId}</span>
             </div>
             
             <div className="h-4 border-l border-gray-300 dark:border-gray-600"></div>
@@ -841,7 +918,7 @@ export default function CodeMirrorEditor({
             <div className="flex items-center space-x-2">
               <button
                 onClick={getAISuggestion}
-                className="flex items-center space-x-1 text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+                className="flex items-center space-x-1 text-sm font-medium px-2 py-1 rounded-md bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-800/40 transition-colors btn-hover-effect focus-ring"
                 title="Get AI code suggestion"
               >
                 <FiCpu className="h-4 w-4" />
@@ -852,7 +929,7 @@ export default function CodeMirrorEditor({
           
           <div className="flex items-center space-x-2">
             {remoteUsers.length > 0 && (
-              <div className="flex items-center space-x-1">
+              <div className="flex items-center space-x-1 bg-gray-100 dark:bg-gray-700 py-1 px-2 rounded-full text-xs">
                 <FiUsers className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                 <span className="text-xs text-gray-500 dark:text-gray-400">
                   {remoteUsers.length} {remoteUsers.length === 1 ? 'user' : 'users'} online
@@ -860,63 +937,67 @@ export default function CodeMirrorEditor({
               </div>
             )}
             
-            {remoteUsers.map((user) => (
-              <div key={user.id} className="flex items-center" title={user.name}>
-                <div
-                  className="h-8 w-8 rounded-full flex items-center justify-center text-white text-xs font-semibold shadow-sm"
+            <div className="flex items-center -space-x-2">
+              {remoteUsers.map((user) => (
+                <div 
+                  key={user.id} 
+                  className="user-avatar h-8 w-8 rounded-full flex items-center justify-center text-white text-xs font-semibold shadow-sm border-2 border-white dark:border-gray-800" 
                   style={{ backgroundColor: user.color }}
+                  title={user.name}
                 >
                   {user.name.charAt(0).toUpperCase()}
                 </div>
+              ))}
+              
+              <div
+                className="user-avatar h-8 w-8 rounded-full flex items-center justify-center text-white text-xs font-semibold shadow-sm border-2 border-white dark:border-gray-800 relative"
+                style={{ backgroundColor: userColor.current }}
+                title={currentUser.name + " (You)"}
+              >
+                {currentUser.name.charAt(0).toUpperCase()}
+                <div className="absolute -bottom-1 -right-1 bg-green-500 h-3 w-3 rounded-full border-2 border-white dark:border-gray-800"></div>
               </div>
-            ))}
-            
-            <div
-              className="h-8 w-8 rounded-full flex items-center justify-center text-white text-xs font-semibold shadow-sm ml-1"
-              style={{ backgroundColor: userColor.current }}
-              title={currentUser.name + " (You)"}
-            >
-              {currentUser.name.charAt(0).toUpperCase()}
             </div>
           </div>
         </div>
         
         {/* Add the AI Suggestion panel after the toolbar */}
         {showSuggestion && (
-          <div className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-3 max-h-48 overflow-auto">
-            <div className="flex justify-between items-center mb-2">
+          <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 max-h-48 overflow-auto shadow-inner">
+            <div className="flex justify-between items-center mb-3">
               <div className="flex items-center">
-                <FiCpu className="text-blue-500 mr-2" size={16} />
-                <span className="font-medium text-gray-700 dark:text-gray-300">AI Suggestion</span>
+                <FiCpu className="text-blue-500 mr-2" size={18} />
+                <span className="font-medium text-gray-800 dark:text-gray-200">AI Suggestion</span>
               </div>
               <button 
                 onClick={() => setShowSuggestion(false)}
-                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               >
                 <FiX size={16} />
               </button>
             </div>
             
             {aiSuggestion.isLoading ? (
-              <div className="flex items-center justify-center p-4">
-                <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-blue-500"></div>
-                <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">Generating suggestion...</span>
+              <div className="flex items-center justify-center p-6">
+                <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"></div>
+                <span className="ml-3 text-sm text-gray-600 dark:text-gray-400">Generating suggestion...</span>
               </div>
             ) : aiSuggestion.error ? (
-              <div className="text-red-500 p-2 bg-red-50 dark:bg-red-900/20 rounded text-sm">
+              <div className="text-red-500 p-3 bg-red-50 dark:bg-red-900/20 rounded-md text-sm border border-red-200 dark:border-red-800/50">
                 {aiSuggestion.error}
               </div>
             ) : (
               <div className="flex flex-col">
-                <pre className="bg-white dark:bg-gray-900 p-2 rounded font-mono text-sm overflow-x-auto border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200">
+                <pre className="bg-gray-50 dark:bg-gray-900 p-3 rounded-md font-mono text-sm overflow-x-auto border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 shadow-inner">
                   {aiSuggestion.text}
                 </pre>
-                <div className="flex justify-end mt-2">
+                <div className="flex justify-end mt-3">
                   <button
                     onClick={applyAISuggestion}
-                    className="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600 transition-colors"
+                    className="bg-blue-500 text-white px-3 py-1.5 rounded-md text-sm hover:bg-blue-600 transition-colors shadow btn-hover-effect focus-ring flex items-center space-x-1"
                   >
-                    Apply Suggestion
+                    <FiCheckCircle className="h-4 w-4" />
+                    <span>Apply Suggestion</span>
                   </button>
                 </div>
               </div>
@@ -928,96 +1009,105 @@ export default function CodeMirrorEditor({
           <div 
             ref={editorRef} 
             className="flex-1 h-full w-full overflow-hidden border-gray-200 dark:border-gray-700"
+            onFocus={() => setFocused(true)} 
+            onBlur={() => setFocused(false)}
           />
         </div>
         
-        <div className="flex flex-col p-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 space-y-3">
-          <div className="flex flex-col sm:flex-row sm:items-start gap-4 w-full">
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 flex items-center">
-                <FiTerminal className="mr-1 h-4 w-4" />
-                Terminal Input
-              </label>
-              <div className="terminal-wrapper">
-                <div className="terminal-header">
-                  <div className="window-controls">
-                    <span className="window-control close"></span>
-                    <span className="window-control minimize"></span>
-                    <span className="window-control maximize"></span>
-                  </div>
-                  <span className="terminal-title">bash ~ {language.toLowerCase()}</span>
-                  <div className="w-12"></div> {/* Spacer for balance */}
-                </div>
-                <div className="relative">
-                  <textarea
-                    className="w-full px-3 py-2 terminal-input rounded-t-none rounded-b-md shadow-sm resize-none font-mono text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition duration-150"
-                    placeholder="Enter input for your code here..."
-                    value={stdin}
-                    onChange={(e) => setStdin(e.target.value)}
-                    rows={2}
-                  />
-                  <div className="terminal-prompt">
-                    <span style={{ color: "#3fb950" }}>$</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex flex-col items-stretch sm:items-end justify-center sm:w-48">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 sm:invisible">Action</label>
-              <button 
-                className={`px-4 py-2.5 rounded-md text-white font-medium transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 w-full flex items-center justify-center ${
-                  isExecuting 
-                    ? 'bg-gray-600 dark:bg-gray-600 cursor-not-allowed' 
-                    : 'bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700 focus:ring-green-500 dark:focus:ring-green-400'
+        <div className="flex flex-col space-y-4 bg-white dark:bg-gray-800 p-4 border-t border-gray-200 dark:border-gray-700 shadow-inner">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => setShowTestCase(!showTestCase)}
+                className={`px-3 py-2 rounded-md transition-colors flex items-center space-x-2 btn-hover-effect focus-ring ${
+                  showTestCase 
+                    ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
                 }`}
+              >
+                <FiTerminal className="w-4 h-4" />
+                <span>{showTestCase ? 'Hide Test Case' : 'Add Test Case'}</span>
+              </button>
+              
+              <button
                 onClick={submitCode}
                 disabled={isExecuting}
+                className={`px-4 py-2 rounded-md transition-colors flex items-center space-x-2 shadow-sm btn-hover-effect focus-ring ${
+                  isExecuting
+                    ? 'bg-gray-400 text-white cursor-not-allowed'
+                    : 'bg-green-600 text-white hover:bg-green-700'
+                }`}
               >
                 {isExecuting ? (
-                  <span className="flex items-center justify-center">
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Running...
-                  </span>
+                  <>
+                    <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"/>
+                    <span>Running...</span>
+                  </>
                 ) : (
                   <>
-                    <FiCornerDownRight className="mr-2 h-4 w-4" />
-                    Execute
+                    <FiPlay className="w-4 h-4" />
+                    <span>Run Code</span>
                   </>
                 )}
               </button>
+              
+              <button
+                onClick={() => {
+                  if (editorViewRef.current) {
+                    const code = editorViewRef.current.state.doc.toString();
+                    navigator.clipboard.writeText(code);
+                    setCopiedToClipboard(true);
+                    setTimeout(() => setCopiedToClipboard(false), 2000);
+                  }
+                }}
+                className="px-3 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 rounded-md transition-colors flex items-center space-x-2 focus-ring"
+              >
+                <MdContentCopy className="w-4 h-4" />
+                <span>{copiedToClipboard ? 'Copied!' : 'Copy Code'}</span>
+              </button>
             </div>
-          </div>
-          
-          {output && (
-            <div className="mt-1">
-              <div className="flex items-center justify-between mb-1">
-                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center">
-                  <FiCode className="mr-1 h-4 w-4" />
-                  Output
-                </h3>
-                <button 
-                  className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 flex items-center"
-                  onClick={() => setOutput("")}
-                >
-                  <FiTrash2 className="mr-1 h-3 w-3" />
-                  Clear
-                </button>
+            
+            {cursorPosition && (
+              <div className="text-xs text-gray-500 dark:text-gray-400 font-mono bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-md">
+                Line {cursorPosition.lineNumber}, Col {cursorPosition.column}
               </div>
-              <div className="terminal-wrapper">
+            )}
+          </div>
+
+          {showTestCase && (
+            <div className="space-y-3 bg-gray-50 dark:bg-gray-900 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+              <label htmlFor="stdin" className="block text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center">
+                <FiCornerDownRight className="mr-1 text-gray-500" />
+                Test Case Input
+              </label>
+              <div className="relative">
+                <textarea
+                  id="stdin"
+                  value={stdin}
+                  onChange={(e) => setStdin(e.target.value)}
+                  placeholder="Enter your test case input here..."
+                  className="w-full h-24 p-3 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-gray-300 text-sm font-mono"
+                />
+              </div>
+            </div>
+          )}
+
+          {output && (
+            <div className="space-y-3">
+              <div className="flex items-center">
+                <FiTerminal className="mr-2 text-gray-700 dark:text-gray-300" />
+                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Output</h3>
+              </div>
+              <div className="terminal-wrapper rounded-md overflow-hidden">
                 <div className="terminal-header">
                   <div className="window-controls">
                     <span className="window-control close"></span>
                     <span className="window-control minimize"></span>
                     <span className="window-control maximize"></span>
                   </div>
-                  <span className="terminal-title">output ~ result</span>
-                  <div className="w-12"></div> {/* Spacer for balance */}
+                  <div className="terminal-title">Terminal</div>
                 </div>
-                <pre className="bg-[#0d1117] p-3 font-mono text-sm text-[#e6edf3] whitespace-pre-wrap max-h-32 overflow-auto border border-[#30363d] rounded-t-none rounded-b-md">
+                <pre className="bg-[#0d1117] text-[#e6edf3] p-4 rounded-b-md overflow-x-auto overflow-y-auto h-40 font-mono text-sm">
                   {output}
                 </pre>
               </div>
@@ -1026,8 +1116,8 @@ export default function CodeMirrorEditor({
         </div>
       </div>
       
-      {/* Chat window space (30%) */}
-      <div className="w-[30%] h-full">
+      {/* Chat window space (40%) */}
+      <div className="w-full lg:w-[40%] h-full lg:h-full border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
         <ChatPanel 
           roomName={roomName}
           roomDescription={roomDescription}

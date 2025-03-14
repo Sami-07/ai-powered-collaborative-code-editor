@@ -105,6 +105,38 @@ export async function POST(req: NextRequest) {
 
     // Process participant invitations
     if (participants.length > 0) {
+      // First validate that all participant emails exist in the system
+      const participantEmails = participants.filter(
+        (email: string) => email !== user?.email
+      );
+      
+      if (participantEmails.length > 0) {
+        const existingUsers = await prisma.user.findMany({
+          where: {
+            email: {
+              in: participantEmails,
+            },
+          },
+          select: {
+            email: true,
+          },
+        });
+        
+        const existingEmails = existingUsers.map(user => user.email);
+        const nonExistingEmails = participantEmails.filter(
+          (email: string) => !existingEmails.includes(email)
+        );
+        
+        if (nonExistingEmails.length > 0) {
+          return NextResponse.json(
+            { 
+              error: `The following emails are not registered users: ${nonExistingEmails.join(', ')}` 
+            }, 
+            { status: 400 }
+          );
+        }
+      }
+      
       // Handle each participant
       await Promise.all(
         participants.map(async (email: string) => {
@@ -115,7 +147,7 @@ export async function POST(req: NextRequest) {
             });
 
             if(!participantUser) {
-              return NextResponse.json({ error: 'Participant user not found' }, { status: 404 });
+              return; // We've already validated that all users exist
             }
 
             // Create the participant relationship

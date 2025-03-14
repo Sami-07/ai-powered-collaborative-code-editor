@@ -25,6 +25,7 @@
     "packages/*"
   ],
   "dependencies": {
+    "motion": "^12.5.0",
     "svix": "^1.61.3"
   }
 }

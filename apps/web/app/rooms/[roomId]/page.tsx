@@ -84,12 +84,12 @@ export default async function RoomPage({
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
+    <div className="min-h-screen flex flex-col bg-gray-50 mt-20">
       <Navbar />
       
       <main className="flex-grow flex flex-col">
         <div className="flex-grow px-4 sm:px-6 lg:px-8">
-          <div className="h-full max-w-7xl mx-auto pt-4">
+          <div className="h-full max-w-[90vw] mx-auto pt-4">
             <CodeEditorWrapper
               roomId={room.id}
               initialCode={room.code}

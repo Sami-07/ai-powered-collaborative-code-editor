@@ -27,7 +27,7 @@ export default async function NewRoomPage() {
     <div className="min-h-screen bg-gray-50">
       <Navbar />
       
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16 mt-16">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Create New Code Room</h1>
           <p className="mt-2 text-gray-600">
@@ -46,7 +46,7 @@ export default async function NewRoomPage() {
           <ul className="list-disc pl-5 space-y-1">
             <li>Add multiple participants by email address</li>
             <li>Participants will be automatically added to the room</li>
-            <li>New users will be able to join when they sign up</li>
+       
             <li>You can always add more participants after creating the room</li>
           </ul>
         </div>

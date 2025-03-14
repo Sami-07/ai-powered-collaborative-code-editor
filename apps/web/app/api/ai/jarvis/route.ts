@@ -79,6 +79,13 @@ GUIDELINES:
 - If asked about something unrelated to the code, politely redirect to code-related topics
 - Format code snippets appropriately
 - Keep your response under 500 words
+- If the code is in JavaScript, take the input similar to the below example:
+const input = require("fs").readFileSync("/dev/stdin").toString().trim();
+const [rawArr, rawTarget] = input.split("\n");
+const arr = rawArr.split(" ").map(Number); // Convert array elements to numbers
+const target = Number(rawTarget); // Convert target to a number
+
+
 `;
 
     // Call OpenAI API
