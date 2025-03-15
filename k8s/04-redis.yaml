@@ -38,12 +38,9 @@ spec:
         ports:
         - containerPort: 6379
           name: redis
-        env:
-        - name: REDIS_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: app-secrets
-              key: REDIS_PASSWORD
+        envFrom:
+        - secretRef:
+            name: app-secrets
         volumeMounts:
         - name: redis-data
           mountPath: /data

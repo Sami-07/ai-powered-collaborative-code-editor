@@ -480,7 +480,7 @@ export default function ChatPanel({
   };
 
   return (
-    <div className="w-full h-full bg-white dark:bg-gray-800 overflow-hidden flex flex-col">
+    <div className="w-full h-full bg-white dark:bg-gray-800 overflow-hidden flex flex-col max-h-[calc(100vh-80px)]">
       {/* Header */}
       <div className="p-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex flex-col">
         <div className="flex items-center justify-between">

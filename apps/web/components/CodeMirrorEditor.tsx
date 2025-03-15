@@ -606,8 +606,8 @@ export default function CodeMirrorEditor({
   }, [editorViewRef.current]);
 
   return (
-    <div className="flex flex-col lg:flex-row h-[calc(100vh-8rem)] w-full overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg">
-      <div className="flex flex-col w-full lg:w-[60%] h-full lg:h-full bg-gray-50 dark:bg-gray-900 overflow-hidden border-b lg:border-b-0 lg:border-r border-gray-200 dark:border-gray-700">
+    <div className="flex flex-col lg:flex-row max-h-[calc(100vh-80px)] w-full overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg">
+      <div className="flex flex-col w-full lg:w-[60%]  bg-gray-50 dark:bg-gray-900 overflow-hidden border-b lg:border-b-0 lg:border-r border-gray-200 dark:border-gray-700">
         <style jsx global>{`
           .remote-cursor {
             position: relative;
@@ -1117,7 +1117,7 @@ export default function CodeMirrorEditor({
       </div>
       
       {/* Chat window space (40%) */}
-      <div className="w-full lg:w-[40%] h-full lg:h-full border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+      <div className="w-full lg:w-[40%] h-full lg:h-full border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-y-auto">
         <ChatPanel 
           roomName={roomName}
           roomDescription={roomDescription}

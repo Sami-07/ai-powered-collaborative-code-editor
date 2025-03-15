@@ -65,9 +65,9 @@ export default function Home() {
                 <video
                   className="w-full h-full object-cover"
                   controls
-                  poster="https://startup-template-sage.vercel.app/hero-light.png"
+                  autoPlay
                 >
-                  <source src="/demo.mp4" type="video/mp4" />
+                  <source src="/demos/demo.mp4" type="video/mp4" />
                   Your browser does not support the video tag.
                 </video>
               </div>

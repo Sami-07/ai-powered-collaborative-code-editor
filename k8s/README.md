@@ -50,6 +50,27 @@ Update the image references in the YAML files with your actual image paths.
    
    Note: In production, you should use a proper secrets management solution.
 
+## Configuration Approach
+
+This deployment uses a simplified approach for configuration management:
+
+1. **Consolidated Environment Variables**: Instead of defining each environment variable separately in ConfigMaps and Secrets, we use a single `.env` file format for each component.
+
+2. **Using envFrom in Deployments**: All deployments use `envFrom` to load the entire ConfigMap or Secret, making the YAML files cleaner and more maintainable.
+
+3. **Base64 Encoding for Secrets**: The `.env` content in Secret resources is base64 encoded as a whole. In production, you would generate this with:
+   ```
+   cat your-env-file | base64
+   ```
+
+4. **Benefits of this approach**:
+   - Simpler YAML files with less repetition
+   - Easier to update multiple variables at once
+   - Better organization of related configuration
+   - More compatible with applications that natively read from `.env` files
+
+5. **KEDA Configuration**: Note that KEDA ScaledObject still requires some direct value references since it doesn't directly run in a pod with these environment variables.
+
 4. Deploy Redis and PostgreSQL:
    ```
    kubectl apply -f 03-postgres.yaml

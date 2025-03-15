@@ -106,8 +106,8 @@ export default function CodeEditorWrapper({
   
   return (
     <div className="flex flex-col h-full">
-      {isOwner && (
         <div className="mb-4 flex items-center justify-between">
+      {isOwner && (
           <div className="flex items-center">
             {isSaving ? (
               <span className="text-sm text-gray-500">Saving...</span>
@@ -122,12 +122,12 @@ export default function CodeEditorWrapper({
             )}
           </div>
           
-          <div className="text-sm text-gray-500">
+          
+        )}
+      <div className="text-sm text-gray-500">
             {isOwner ? "You can edit and save this code" : "View only mode"}
           </div>
         </div>
-      )}
-      
       <div className="flex-grow">
         <CodeMirrorEditor
           roomId={roomId}

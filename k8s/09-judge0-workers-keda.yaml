@@ -24,9 +24,9 @@ spec:
   triggers:
   - type: redis
     metadata:
-      hostFromEnv: REDIS_HOST
-      portFromEnv: REDIS_PORT
-      passwordFromEnv: REDIS_PASSWORD
+      host: "redis"
+      port: "6379"
+      passwordFromEnv: "REDIS_PASSWORD"
       listName: "custom:submissions:queue"
       listLength: "10"  # Scale up when queue length > 10
       enableTLS: "false" 
