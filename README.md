@@ -1,4 +1,4 @@
 
 ## 🎥 Demo Video
 
-https://github.com/Sami-07/ai-powered-collaborative-code-editor/blob/main/apps/web/public/demos/demo.mp4
+https://github.com/user-attachments/assets/9bd830c5-fa6c-47a3-84a9-f2a91c3fb3d0
