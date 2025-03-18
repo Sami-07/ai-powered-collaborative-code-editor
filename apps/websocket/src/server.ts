@@ -6,7 +6,7 @@ import * as dotenv from 'dotenv';
 import { prisma } from '@repo/db';
 import { createClerkClient, verifyToken } from '@clerk/backend';
 import { Redis } from 'ioredis';
-import { randomUUID } from 'crypto';
+import { v4 as uuidv4 } from 'uuid';
 dotenv.config();
 
 const PORT = process.env.WEBSOCKET_PORT ? parseInt(process.env.WEBSOCKET_PORT, 10) : 1235;
@@ -84,7 +84,7 @@ const REDIS_CHANNEL_PREFIX = 'chat:room:';
 const REDIS_ROOMS_KEY = 'chat:rooms';
 
 // Create a unique instance ID for this server
-const instanceId = `instance:${randomUUID()}`;
+const instanceId = `instance:${uuidv4()}`;
 
 // Store chat users by userId for quick lookup
 const chatUsers = new Map<string, ChatUser>();
