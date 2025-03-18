@@ -1,0 +1,28 @@
+{
+  "name": "code-collab-websocket-server",
+  "version": "1.0.0",
+  "description": "WebSocket server for Code Collab real-time collaboration",
+  "main": "dist/server.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "ts-node src/server.ts"
+  },
+  "dependencies": {
+    "@clerk/backend": "^1.25.1",
+    "@repo/db": "*",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "ioredis": "^5.6.0",
+    "ws": "^8.16.0",
+    "y-websocket": "^2.1.0",
+    "yjs": "^13.6.23"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^20.11.24",
+    "@types/ws": "^8.5.10",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  }
+}

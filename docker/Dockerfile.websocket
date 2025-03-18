@@ -1,0 +1,25 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY ./package.json ./turbo.json ./
+COPY ./apps/websocket/package.json ./apps/websocket/
+COPY ./packages/db/package.json ./packages/db/
+
+RUN npm install
+RUN npm install -g pm2
+
+COPY ./apps/websocket/ ./apps/websocket/
+COPY ./packages/db/ ./packages/db/
+
+# Make sure TypeScript is properly compiled
+RUN npm run build:db
+RUN npm run build:websocket
+RUN npm run db:generate
+
+EXPOSE 1235
+
+# Use NODE_ENV=production to ensure TypeScrip@repo/db
+
+# Simplify the command to run the compiled JavaScript file
+CMD ["pm2-runtime", "start", "apps/websocket/dist/server.js", "--name", "websocket"]

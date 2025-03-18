@@ -1,0 +1,31 @@
+FROM node:20-alpine as builder  
+
+ARG DATABASE_URL
+
+WORKDIR /app
+
+COPY package.json turbo.json ./
+
+COPY packages/db/package.json ./packages/db/
+COPY packages/ui/package.json ./packages/ui/
+COPY packages/eslint-config/package.json ./packages/eslint-config/
+COPY packages/typescript-config/package.json ./packages/typescript-config/
+COPY apps/web/package.json ./apps/web/
+
+
+
+COPY packages ./packages
+COPY apps/web ./apps/web
+
+RUN npm run db:generate
+
+# RUN echo DATABASE_URL=${DATABASE_URL} >> apps/web/.env
+
+# RUN DATABASE_URL=${DATABASE_URL} npm run build
+RUN npm run build
+
+# RUN rm apps/web/.env  
+
+EXPOSE 3000
+
+CMD ["npm", "run", "start:web"]
