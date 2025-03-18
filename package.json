@@ -1,5 +1,5 @@
 {
-  "name": "my-turborepo",
+  "name": "code-collab",
   "private": true,
   "scripts": {
     "build": "turbo run build",
