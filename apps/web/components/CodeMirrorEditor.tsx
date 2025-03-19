@@ -1117,7 +1117,7 @@ export default function CodeMirrorEditor({
       </div>
       
       {/* Chat window space (40%) */}
-      <div className="w-full lg:w-[40%] h-full lg:h-full border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-y-auto">
+      <div className="w-full lg:w-[40%]  border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-y-auto h-[calc(100vh-150px)]">
         <ChatPanel 
           roomName={roomName}
           roomDescription={roomDescription}
