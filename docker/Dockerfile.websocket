@@ -8,6 +8,7 @@ COPY ./packages/db/package.json ./packages/db/
 
 RUN npm install
 RUN npm install -g pm2
+RUN npm install -g prisma
 
 COPY ./apps/websocket/ ./apps/websocket/
 COPY ./packages/db/ ./packages/db/
@@ -19,7 +20,8 @@ RUN npm run db:generate
 
 EXPOSE 1235
 
-# Use NODE_ENV=production to ensure TypeScrip@repo/db
+# Use NODE_ENV=production for production environment
+ENV NODE_ENV=production
 
 # Simplify the command to run the compiled JavaScript file
 CMD ["pm2-runtime", "start", "apps/websocket/dist/server.js", "--name", "websocket"]

@@ -6,7 +6,10 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/server.js",
-    "dev": "ts-node src/server.ts"
+    "dev": "ts-node src/server.ts",
+    "build:db": "cd ../../packages/db && npm run build",
+    "db:generate": "cd ../../packages/db && npm run db:generate",
+    "build:websocket": "npm run build"
   },
   "dependencies": {
     "@clerk/backend": "^1.25.1",

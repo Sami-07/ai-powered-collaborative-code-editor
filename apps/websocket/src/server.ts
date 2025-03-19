@@ -1,5 +1,8 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import * as http from 'http';
+import * as https from 'https';
+import * as fs from 'fs';
+import * as path from 'path';
 import express from 'express';
 const { setupWSConnection } = require('y-websocket/bin/utils');
 import * as dotenv from 'dotenv';
@@ -11,6 +14,9 @@ dotenv.config();
 
 const PORT = process.env.WEBSOCKET_PORT ? parseInt(process.env.WEBSOCKET_PORT, 10) : 1235;
 const HOST = process.env.WEBSOCKET_HOST || 'localhost';
+const USE_SSL = process.env.USE_SSL === 'true';
+const SSL_KEY_PATH = process.env.SSL_KEY_PATH || '';
+const SSL_CERT_PATH = process.env.SSL_CERT_PATH || '';
 
 const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY;
 
@@ -77,7 +83,27 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
   res.status(500).send('Something broke!');
 });
 
-const server = http.createServer(app);
+// Create either HTTP or HTTPS server based on configuration
+let server: http.Server | https.Server;
+
+if (USE_SSL && SSL_KEY_PATH && SSL_CERT_PATH) {
+  try {
+    const sslOptions = {
+      key: fs.readFileSync(SSL_KEY_PATH),
+      cert: fs.readFileSync(SSL_CERT_PATH)
+    };
+    server = https.createServer(sslOptions, app);
+    console.log('Using HTTPS server with SSL');
+  } catch (error) {
+    console.error('Error loading SSL certificates:', error);
+    console.log('Falling back to HTTP server');
+    server = http.createServer(app);
+  }
+} else {
+  server = http.createServer(app);
+  console.log('Using HTTP server');
+}
+
 const wss = new WebSocketServer({ server });
 
 const REDIS_CHANNEL_PREFIX = 'chat:room:';
@@ -811,7 +837,8 @@ async function cleanup() {
 
 // Start the server
 server.listen(PORT, HOST, async () => {
-  console.log(`WebSocket server is running at http://${HOST}:${PORT}`);
+  const protocol = USE_SSL ? 'https' : 'http';
+  console.log(`WebSocket server is running at ${protocol}://${HOST}:${PORT}`);
   
   // Setup Redis subscriptions when starting server
   await initialize();
