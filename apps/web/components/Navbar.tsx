@@ -39,12 +39,7 @@ export default function Navbar() {
               >
                 Home
               </Link>
-              <Link
-                href="/features"
-                className="border-transparent text-gray-700 hover:border-indigo-500 hover:text-indigo-600 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-all duration-200"
-              >
-                Features
-              </Link>
+             
              
               <SignedIn>
                 <Link
