@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { FiPlus, FiCode, FiUsers, FiMonitor, FiArrowRight, FiGitBranch } from "react-icons/fi";
 import { SparklesText } from "@/components/magicui/sparkles-text";
 
+export const dynamic = 'force-dynamic';
 // Define types for the API response
 interface Activity {
   id: string;
