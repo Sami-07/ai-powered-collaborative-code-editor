@@ -36,12 +36,12 @@ code-collab/
 ```
 ### AutoScaling Group Configuration
 
-![AutoScaling Group Configuration](https://github.com/user-attachments/assets/9bd830c5-fa6c-47a3-84a9-f2a91c3fb3d0)
+![AutoScaling Group Configuration](https://github.com/user-attachments/assets/8f24c30a-b35f-4185-9a74-a67723e9ace5)
 
 
 ### AutoScaling Demo
 
-![AutoScaling Demo](https://github.com/user-attachments/assets/f777a70c-2047-419d-bee8-092d04577ab9)
+![AutoScaling Demo](https://github.com/user-attachments/assets/378447d1-8ec9-444c-998f-c5e3685af023)
 
 ### Technology Stack
 
