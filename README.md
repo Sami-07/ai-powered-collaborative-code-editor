@@ -16,6 +16,19 @@ https://github.com/user-attachments/assets/9bd830c5-fa6c-47a3-84a9-f2a91c3fb3d0
 - **Modern UI**: Clean, responsive interface built with Next.js and Tailwind CSS
 - **Scalable Architecture**: Monorepo setup with Turborepo for efficient development with Docker and AWS Auto Scaling groups
 
+### Technology Stack
+
+- **Frontend**: Next.js, React, TailwindCSS, shadcn/ui
+- **Real-time Collaboration**: Y.js, CodeMirror, WebSockets
+- **Backend**: Node.js, Express
+- **Database**: PostgreSQL, Prisma ORM
+- **Execution Environment**: Containerized Judge0 (self-hosted)
+- **Deployment**: Docker, AWS Auto Scaling
+- **Scaling**: Redis pub/sub for WebSocket scaling
+- **Authentication**: Clerk
+
+
+
 ## 🏗️ Architecture
 
 ![Code Collab Architecture](https://github.com/user-attachments/assets/c864db0c-fd0d-4393-a67f-3c8d6a4537f5)
@@ -61,17 +74,6 @@ https://github.com/user-attachments/assets/43305df5-0ea8-4ce7-bd78-f78899823d0e
 
 https://github.com/user-attachments/assets/23242ba4-ecd8-4c2f-91ef-280128b57809
 
-
-### Technology Stack
-
-- **Frontend**: Next.js, React, TailwindCSS, shadcn/ui
-- **Real-time Collaboration**: Y.js, CodeMirror, WebSockets
-- **Backend**: Node.js, Express
-- **Database**: PostgreSQL, Prisma ORM
-- **Execution Environment**: Containerized Judge0 (self-hosted)
-- **Deployment**: Docker, Linode, AWS Auto Scaling
-- **Scaling**: Redis pub/sub for WebSocket scaling
-- **Authentication**: Clerk
 
 
 
