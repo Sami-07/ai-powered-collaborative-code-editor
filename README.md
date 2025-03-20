@@ -34,6 +34,14 @@ code-collab/
 │   └── typescript-config/# TypeScript configuration
 └── docker/               # Docker configuration files
 ```
+### AutoScaling Group Configuration
+
+![AutoScaling Group Configuration](https://github.com/user-attachments/assets/9bd830c5-fa6c-47a3-84a9-f2a91c3fb3d0)
+
+
+### AutoScaling Demo
+
+![AutoScaling Demo](https://github.com/user-attachments/assets/f777a70c-2047-419d-bee8-092d04577ab9)
 
 ### Technology Stack
 
