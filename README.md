@@ -18,7 +18,7 @@ https://github.com/user-attachments/assets/9bd830c5-fa6c-47a3-84a9-f2a91c3fb3d0
 
 ## 🏗️ Architecture
 
-![Code Collab Architecture](https://github.com/user-attachments/assets/bc9e58cf-4935-4c87-848f-c71fd436616d)
+![Code Collab Architecture](https://github.com/user-attachments/assets/c864db0c-fd0d-4393-a67f-3c8d6a4537f5)
 
 ### Monorepo Structure
 
