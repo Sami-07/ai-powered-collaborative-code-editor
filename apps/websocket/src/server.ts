@@ -249,9 +249,6 @@ sub.on('message', (receivedChannel, messageStr) => {
       if (!room) return;
       
       room.forEach(userId => {
-        // Skip sending the message back to the original sender
-        if (userId === message.senderId) return;
-        
         const user = chatUsers.get(userId);
         if (user && user.socket.readyState === WebSocket.OPEN) {
           console.log("sending message to user", userId);
