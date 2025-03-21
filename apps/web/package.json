@@ -5,12 +5,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack --port 3000",
-    "build": "npm run build:db && npm run db:generate && next build",
+    "build": "next build",
     "start": "next start",
     "lint": "next lint --max-warnings 0",
     "check-types": "tsc --noEmit",
     "build:db": "cd ../../packages/db && npm run build",
-    "db:generate": "cd ../../packages/db && npm run db:generate"
+    "db:generate": "cd ../../packages/db && npm run db:generate",
+    "prebuild": "npm run build:db && npm run db:generate"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.12.2",
