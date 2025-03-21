@@ -19,7 +19,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: .
-          file: ./docker/Dockerfile.backend
+          file: ./docker/Dockerfile.websocket
           push: true
           tags: abdulsami7/code-collab-ws:${{ github.sha }}
 
