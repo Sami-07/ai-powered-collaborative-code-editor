@@ -119,132 +119,59 @@ const chatRooms = new Map<string, Set<string>>();
 // Store connection registry to track which instance holds each user's connection
 const connectionRegistry = new Map<string, string>();
 
-// Initialize the server
-async function initialize() {
-  // Load existing rooms from Redis on startup
-  await loadRoomsFromRedis();
-  
-  // Set up Redis subscription to channels for each room
-  await setupRedisSubscriptions();
-  
-  // Set up batch processor for chat messages
-  startChatMessageProcessor();
-  
-  // The sub.on('message'...) handlers for instance-specific and room channels 
-  // are now set up in a centralized way in the setupRedisSubscriptions function
-  
-  console.log(`WebSocket server initialized with instance ID: ${instanceId}`);
-  
-  // Set up process termination handler for cleanup
-  process.on('SIGINT', cleanup);
-  process.on('SIGTERM', cleanup);
-}
-
-// Load rooms from Redis
-async function loadRoomsFromRedis() {
-  try {
-    // Get all rooms from Redis
-    const rooms = await pub.smembers(REDIS_ROOMS_KEY);
-    
-    // If no rooms exist, create the default general room
-    if (rooms.length === 0) {
-      await pub.sadd(REDIS_ROOMS_KEY, 'general');
-      rooms.push('general');
-    }
-    
-    // Initialize chatRooms with rooms from Redis
-    for (const roomId of rooms) {
-      chatRooms.set(roomId, new Set<string>());
-      console.log(`Loaded room from Redis: ${roomId}`);
-    }
-  } catch (error) {
-    console.error('Error loading rooms from Redis:', error);
-    // Fallback to at least having the general room
-    chatRooms.set('general', new Set<string>());
-  }
-}
-
-// Add a new room
-async function addRoom(roomId: string): Promise<boolean> {
-  try {
-    // Check if room already exists
-    if (chatRooms.has(roomId)) {
-      return false;
-    }
-    
-    // Add room to Redis
-    await pub.sadd(REDIS_ROOMS_KEY, roomId);
-    
-    // Add room to local cache
-    chatRooms.set(roomId, new Set<string>());
-    
-    // Subscribe to the new room's channel
-    await subscribeToRoomChannel(roomId);
-    
-    console.log(`Created new room: ${roomId}`);
-    return true;
-  } catch (error) {
-    console.error(`Error creating room ${roomId}:`, error);
-    return false;
-  }
-}
-
-// Remove a room
-async function removeRoom(roomId: string): Promise<boolean> {
-  try {
-    const exists = await pub.sismember(REDIS_ROOMS_KEY, roomId);
-    if (!exists) {
-      console.log(`Room ${roomId} does not exist in Redis`);
-      return false;
-    }
-    
-    // Remove from Redis set
-    await pub.srem(REDIS_ROOMS_KEY, roomId);
-    
-    // Unsubscribe from channel
-    const channel = `${REDIS_CHANNEL_PREFIX}${roomId}`;
-    await sub.unsubscribe(channel);
-    
-    // Remove from subscribedChannels set
-    subscribedChannels.delete(channel);
-    
-    console.log(`Removed room: ${roomId}`);
-    return true;
-  } catch (error) {
-    console.error(`Error removing room ${roomId}:`, error);
-    return false;
-  }
-}
-
-// Setup Redis subscriptions
-async function setupRedisSubscriptions() {
-  // Subscribe to all existing rooms
-  for (const roomId of chatRooms.keys()) {
-    await subscribeToRoomChannel(roomId);
-  }
-  
-  // Subscribe to this instance's channel
-  await sub.subscribe(instanceId);
-  
-  // Handle instance-specific messages
-  sub.on('message', (channel, messageStr) => {
-    console.log("received message from instance", channel, messageStr);
-    if (channel === instanceId) {
-      try {
-        const { userId, payload } = JSON.parse(messageStr);
-        const user = chatUsers.get(userId);
-        if (user && user.socket.readyState === WebSocket.OPEN) {
-          user.socket.send(JSON.stringify(payload));
-        }
-      } catch (error) {
-        console.error('Error handling cross-instance message:', error);
-      }
-    }
-  });
-}
-
 // Track subscribed channels to prevent duplicate subscriptions
 const subscribedChannels = new Set<string>();
+
+// Rate limiting configuration
+const MESSAGE_RATE_LIMIT = {
+  WINDOW_MS: 1000,  // 1 second window
+  MAX_MESSAGES: 5,  // Maximum messages per window
+  COOLDOWN_MS: 5000 // Cooldown period after hitting limit
+};
+
+// Store last message timestamps and counts for rate limiting
+const messageRateLimit = new Map<string, { 
+  windowStart: number,
+  messageCount: number,
+  cooldownUntil: number 
+}>();
+
+// Check if a user has exceeded their rate limit
+function checkRateLimit(userId: string): { limited: boolean, reason?: string } {
+  const now = Date.now();
+  const userLimit = messageRateLimit.get(userId);
+
+  // If no previous messages or window expired, start new window
+  if (!userLimit || now - userLimit.windowStart >= MESSAGE_RATE_LIMIT.WINDOW_MS) {
+    messageRateLimit.set(userId, {
+      windowStart: now,
+      messageCount: 1,
+      cooldownUntil: 0
+    });
+    return { limited: false };
+  }
+
+  // Check if user is in cooldown
+  if (userLimit.cooldownUntil > now) {
+    return { 
+      limited: true, 
+      reason: `Please wait ${Math.ceil((userLimit.cooldownUntil - now) / 1000)} seconds before sending more messages.`
+    };
+  }
+
+  // Check if user has exceeded rate limit
+  if (userLimit.messageCount >= MESSAGE_RATE_LIMIT.MAX_MESSAGES) {
+    userLimit.cooldownUntil = now + MESSAGE_RATE_LIMIT.COOLDOWN_MS;
+    return { 
+      limited: true, 
+      reason: `You've sent too many messages. Please wait ${MESSAGE_RATE_LIMIT.COOLDOWN_MS / 1000} seconds.`
+    };
+  }
+
+  // Increment message count in current window
+  userLimit.messageCount++;
+  return { limited: false };
+}
 
 async function subscribeToRoomChannel(roomId: string) {
   const channel = `${REDIS_CHANNEL_PREFIX}${roomId}`;
@@ -264,12 +191,54 @@ async function subscribeToRoomChannel(roomId: string) {
   console.log(`Subscribed to channel: ${channel}`);
 }
 
-// Use a single global message handler instead of creating a new one for each subscription
+// Initialize the server
+async function initialize() {
+  console.log(`Starting WebSocket server instance: ${instanceId}`);
+  
+  // Subscribe to instance-specific channel for private messages
+  await sub.subscribe(instanceId);
+  
+  // Ensure general room exists
+  await ensureGeneralRoom();
+  
+  // Start message processor
+  await startChatMessageProcessor();
+  
+  // Set up process termination handler for cleanup
+  process.on('SIGINT', cleanup);
+  process.on('SIGTERM', cleanup);
+}
+
+// Create a default general room if it doesn't exist
+async function ensureGeneralRoom(): Promise<void> {
+  try {
+    const exists = await pub.sismember(REDIS_ROOMS_KEY, 'general');
+    if (!exists) {
+      await pub.sadd(REDIS_ROOMS_KEY, 'general');
+      console.log('Created default general room');
+    }
+  } catch (error) {
+    console.error('Error ensuring general room exists:', error);
+  }
+}
+
+// Global message handler for all Redis channels
 sub.on('message', (receivedChannel, messageStr) => {
-  // Skip instance-specific channel, which is handled separately
-  if (receivedChannel === instanceId) return;
-  console.log("received message from channel ", receivedChannel, messageStr);
-  // Handle room channels
+  // Handle instance-specific messages (private messages)
+  if (receivedChannel === instanceId) {
+    try {
+      const { userId, payload } = JSON.parse(messageStr);
+      const user = chatUsers.get(userId);
+      if (user && user.socket.readyState === WebSocket.OPEN) {
+        user.socket.send(JSON.stringify(payload));
+      }
+    } catch (error) {
+      console.error('Error handling cross-instance message:', error);
+    }
+    return;
+  }
+
+  // Handle room messages
   if (receivedChannel.startsWith(REDIS_CHANNEL_PREFIX)) {
     try {
       const message = JSON.parse(messageStr) as ChatMessage;
@@ -280,6 +249,9 @@ sub.on('message', (receivedChannel, messageStr) => {
       if (!room) return;
       
       room.forEach(userId => {
+        // Skip sending the message back to the original sender
+        if (userId === message.senderId) return;
+        
         const user = chatUsers.get(userId);
         if (user && user.socket.readyState === WebSocket.OPEN) {
           console.log("sending message to user", userId);
@@ -337,6 +309,7 @@ async function handleChatConnection(socket: WebSocket, req: http.IncomingMessage
   const sessionToken = url.searchParams.get('token');
   const roomId = url.searchParams.get('room') || 'general';
   console.log("roomId in URL", roomId);
+  
   // Authenticate with Clerk token
   if (!sessionToken) {
     console.log(`Authentication failure: No Clerk session token provided`);
@@ -349,7 +322,6 @@ async function handleChatConnection(socket: WebSocket, req: http.IncomingMessage
     let userId;
 
     if (clerk) {
-      // Fallback to using secretKey to verify the token
       try {
         const verifiedToken = await verifyToken(sessionToken, { secretKey: CLERK_SECRET_KEY });
         console.log("verifiedToken", verifiedToken);
@@ -382,31 +354,6 @@ async function handleChatConnection(socket: WebSocket, req: http.IncomingMessage
 
     const username = `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Anonymous User';
 
-    // Check if user is already connected on this instance
-    if (chatUsers.has(userId)) {
-      // Handle reconnection - close existing connection
-      const existingUser = chatUsers.get(userId);
-      if (existingUser && existingUser.socket.readyState === WebSocket.OPEN) {
-        existingUser.socket.close(1000, 'Reconnecting from another location');
-      }
-    } else {
-      // Check if user is connected to another instance
-      const connectionData = await pub.hgetall(`connections:${userId}`);
-      if (connectionData.instanceId && connectionData.instanceId !== instanceId) {
-        // User is connected to another instance, we should notify that instance
-        await pub.publish(connectionData.instanceId, JSON.stringify({
-          userId,
-          payload: {
-            type: MessageType.ERROR,
-            senderId: 'system',
-            senderName: 'System',
-            content: 'Reconnecting from another location',
-            timestamp: Date.now()
-          }
-        }));
-      }
-    }
-
     console.log(`Chat user connected: ${username} (${userId}) in room ${roomId}`);
 
     // Register user connection with this instance
@@ -415,7 +362,6 @@ async function handleChatConnection(socket: WebSocket, req: http.IncomingMessage
     // Check if the room exists in memory first before querying database
     if (!chatRooms.has(roomId)) {
       // Only check database if room is not already in memory
-      // Use select with only the id field to minimize data transfer
       const room = await prisma.codeRoom.findUnique({
         where: { id: roomId },
         select: { id: true }  // Only select the id field
@@ -544,37 +490,54 @@ async function handleChatMessage(userId: string, message: any) {
   const user = chatUsers.get(userId);
   if (!user) return;
 
+  // Check rate limit before processing message
+  const rateLimitCheck = checkRateLimit(userId);
+  if (rateLimitCheck.limited) {
+    user.socket.send(JSON.stringify({
+      type: MessageType.ERROR,
+      senderId: 'system',
+      senderName: 'System',
+      content: rateLimitCheck.reason,
+      timestamp: Date.now()
+    }));
+    return;
+  }
+
   // Handle based on message type
   if (message.type === 'private' && message.recipientId) {
-    // Handle private message
-    const privateMessage = {
-      type: MessageType.PRIVATE_MESSAGE,
-      senderId: userId,
-      senderName: user.username,
-      content: message.content,
-      timestamp: Date.now(),
-      recipientId: message.recipientId,
-      instanceId
-    };
-
-    // Enqueue private message for database storage
     try {
-      await queueClient.rpush('chat_messages_queue', JSON.stringify({
-        type: MessageType.PRIVATE_MESSAGE.toString(),
-        content: message.content || '',
+      // Handle private message
+      const privateMessage = {
+        type: MessageType.PRIVATE_MESSAGE,
         senderId: userId,
         senderName: user.username,
+        content: message.content || '',
+        timestamp: Date.now(),
         recipientId: message.recipientId,
-        timestamp: privateMessage.timestamp
-      }));
-    } catch (error) {
-      console.error('Error enqueueing private message:', error);
-    }
+        instanceId
+      };
 
-    // Check if recipient is connected to any instance
-    const recipientConnData = await pub.hgetall(`connections:${message.recipientId}`);
-    
-    if (recipientConnData.instanceId) {
+      // First enqueue message for database storage to ensure persistence
+      await queueClient.rpush('chat_messages_queue', JSON.stringify({
+        ...privateMessage,
+        type: MessageType.PRIVATE_MESSAGE.toString(),
+      }));
+
+      // Check if recipient exists and is connected to any instance
+      const recipientConnData = await pub.hgetall(`connections:${message.recipientId}`);
+      
+      if (!recipientConnData.instanceId) {
+        // Recipient is not connected, but message is still stored in DB
+        user.socket.send(JSON.stringify({
+          type: MessageType.ERROR,
+          senderId: 'system',
+          senderName: 'System',
+          content: 'User is not currently online',
+          timestamp: Date.now()
+        }));
+        return; // Exit early since recipient is offline
+      }
+
       // If recipient is on a different instance, forward the message there
       if (recipientConnData.instanceId !== instanceId) {
         await pub.publish(recipientConnData.instanceId, JSON.stringify({
@@ -588,10 +551,27 @@ async function handleChatMessage(userId: string, message: any) {
           recipientUser.socket.send(JSON.stringify(privateMessage));
         }
       }
+
+      // Send an acknowledgment to the sender that message was sent successfully
+      user.socket.send(JSON.stringify({
+        type: MessageType.MESSAGE,
+        senderId: 'system',
+        senderName: 'System',
+        content: 'Message sent successfully',
+        timestamp: Date.now()
+      }));
+      
+    } catch (error) {
+      console.error('Error handling private message:', error);
+      // Notify sender of the error
+      user.socket.send(JSON.stringify({
+        type: MessageType.ERROR,
+        senderId: 'system',
+        senderName: 'System',
+        content: 'Failed to send private message',
+        timestamp: Date.now()
+      }));
     }
-    
-    // Send a copy to the sender as well
-    user.socket.send(JSON.stringify(privateMessage));
   } else {
     // Handle regular room message
     const chatMessage = {
