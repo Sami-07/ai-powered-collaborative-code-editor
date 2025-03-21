@@ -1,4 +1,4 @@
-name: CI/CD for backend
+name: CI/CD for websocket
 on:
   push:
     branches: [main]
