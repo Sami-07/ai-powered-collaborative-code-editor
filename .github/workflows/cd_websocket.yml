@@ -1,0 +1,44 @@
+name: CI/CD for backend
+on:
+  push:
+    branches: [main]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout/transfer the code
+        uses: actions/checkout@v2
+
+      - name: Docker login
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./docker/Dockerfile.backend
+          push: true
+          tags: abdulsami7/code-collab-ws:${{ github.sha }}
+
+      - name: Deploy to VM
+        run: |
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" &> ~/ssh_key
+          chmod 700 /home/runner/ssh_key
+          ssh -o StrictHostKeyChecking=no -i /home/runner/ssh_key root@172.105.63.228 -t  "
+              docker stop code-collab-ws || true && docker rm code-collab-ws || true;
+              docker run -d --name code-collab-ws \
+              -v /etc/letsencrypt:/etc/letsencrypt \
+              -e WEBSOCKET_PORT=1235 \
+              -e WEBSOCKET_HOST=0.0.0.0 \
+              -e REDIS_HOST=redis-12915.c305.ap-south-1-1.ec2.redns.redis-cloud.com \
+              -e REDIS_PORT=12915 \
+              -e REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }} \
+              -e CLERK_SECRET_KEY=${{ secrets.CLERK_SECRET_KEY }} \
+              -e DATABASE_URL=${{ secrets.DATABASE_URL }} \
+              -e USE_SSL=true \
+              -e SSL_KEY_PATH=/etc/letsencrypt/live/ws.backend.codecollab.abdulsami.dev/privkey.pem \
+              -e SSL_CERT_PATH=/etc/letsencrypt/live/ws.backend.codecollab.abdulsami.dev/fullchain.pem \
+              -p 1235:1235 abdulsami7/code-collab-ws:${{ github.sha }}"
