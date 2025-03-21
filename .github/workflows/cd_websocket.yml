@@ -28,8 +28,8 @@ jobs:
           echo "${{ secrets.SSH_PRIVATE_KEY }}" &> ~/ssh_key
           chmod 700 /home/runner/ssh_key
           ssh -o StrictHostKeyChecking=no -i /home/runner/ssh_key root@172.105.63.228 -t  "
-              docker stop abdulsami7/code-collab-ws || true && docker rm abdulsami7/code-collab-ws || true;
-              docker run -d --name abdulsami7/code-collab-ws \
+              docker stop code-collab-ws || true && docker rm code-collab-ws || true;
+              docker run -d --name code-collab-ws \
               -v /etc/letsencrypt:/etc/letsencrypt \
               -e WEBSOCKET_PORT=1235 \
               -e WEBSOCKET_HOST=0.0.0.0 \
